@@ -1,0 +1,34 @@
+#include "movement.h"
+#include "lcd.h"
+#include "timer.h"
+#include "open_interface.h"
+
+void move_square(oi_t *sensor_data, double distance_mm);
+
+int main (void) {
+
+	oi_t *sensor_data = oi_alloc();
+	oi_init(sensor_data);
+	lcd_init();
+	timer_init();
+
+	double sum = move_forward_collision(sensor_data, 2000);
+	lcd_printf("%lf", sum);
+
+	oi_free(sensor_data);
+	return 0;
+}
+
+void move_square(oi_t *sensor_data, double distance_mm) {
+	move_forward(sensor_data, distance_mm);
+	turn_right(sensor_data, 90);
+
+	move_forward(sensor_data, distance_mm);
+	turn_right(sensor_data, 90);
+
+	move_forward(sensor_data, distance_mm);
+	turn_right(sensor_data, 90);
+
+	move_forward(sensor_data, distance_mm);
+	turn_right(sensor_data, 90);
+}

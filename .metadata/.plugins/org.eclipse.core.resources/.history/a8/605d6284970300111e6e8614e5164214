@@ -1,0 +1,83 @@
+/*
+ * movement.c
+ *
+ *  Created on: Feb 6, 2026
+ *      Author: knockand
+ */
+
+#include "open_interface.h"
+
+double move_forward(oi_t *sensor_data, double distance_mm);
+int get_distance(oi_t *sensor_data);
+
+double move_forward(oi_t *sensor_data, double distance_mm) {
+    int i;
+    int increment = 40;
+    int sum = 0;
+    int brake_distance = distance_mm * 0.87; //start slowing down here
+
+    //Start building up speed slowly
+    for (i = 1; i <= 10; i++) {
+        oi_setWheels(i * increment, i * increment);
+        sum += get_distance(sensor_data);
+    }
+
+    while (sum < brake_distance) {
+        sum += get_distance(sensor_data);
+    }
+
+    for (i = 9; i >= 0; i--) {
+            oi_setWheels(i * increment, i * increment);
+            sum += get_distance(sensor_data);
+            if (sum + increment > distance_mm) {
+                oi_setWheels(0,0);
+                break;
+            }
+        }
+
+    oi_setWheels(0,0);
+    return sum;
+}
+
+double turn_right(oi_t *sensor, double degrees) {
+    double sum = 0;
+    double rotation_corrected = degrees * 0.95;
+
+    oi_setWheels(-50, 50);
+
+    while (sum + rotation_corrected >= 0) {
+        oi_update(sensor);
+
+        sum += sensor -> angle;
+
+    }
+
+    oi_setWheels(0,0);
+
+    return sum;
+}
+
+double turn_left(oi_t *sensor, double degrees) {
+    double sum = 0;
+    double rotation_corrected = degrees * 0.95;
+
+    oi_setWheels(50, -50);
+
+    while (sum < rotation_corrected) {
+        oi_update(sensor);
+
+        sum += sensor -> angle;
+
+    }
+
+    oi_setWheels(0,0);
+
+    return sum;
+}
+
+int get_distance(oi_t *sensor_data) {
+    oi_update(sensor_data);
+    return sensor_data -> distance;
+
+}
+

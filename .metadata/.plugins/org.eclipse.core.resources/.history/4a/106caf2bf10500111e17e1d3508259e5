@@ -1,0 +1,28 @@
+#include "movement.h"
+#include "open_interface.h"
+
+int main (void) {
+
+	oi_t *sensor_data = oi_alloc();
+	oi_init(sensor_data);
+
+	//move_square(sensor_data, 500);
+	move_forward_collision(sensor_data, 2000);
+
+	oi_free(sensor_data);
+	return 0;
+}
+
+void move_square(oi_t *sensor_data, double distance_mm) {
+	move_forward(sensor_data, distance_mm);
+	turn_right(sensor_data, 90);
+
+	move_forward(sensor_data, distance_mm);
+	turn_right(sensor_data, 90);
+
+	move_forward(sensor_data, distance_mm);
+	turn_right(sensor_data, 90);
+
+	move_forward(sensor_data, distance_mm);
+	turn_right(sensor_data, 90);
+}
