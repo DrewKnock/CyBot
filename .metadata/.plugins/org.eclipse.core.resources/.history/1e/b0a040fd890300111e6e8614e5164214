@@ -1,6 +1,0 @@
-#ifndef MOVEMENT_H_
-#define MOVEMENT_H_
-
-double move_forward(oi_t sensor_data, double distance_mm);
-
-#endif
