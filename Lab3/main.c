@@ -58,8 +58,8 @@ int main(void) {
     timer_init();
     cyBOT_init_Scan(0b0111);
 
-    right_calibration_value = 295750;
-    left_calibration_value = 1293250;
+    right_calibration_value = 337750;
+    left_calibration_value = 1377250;
 
     char receive_char;
     char message[50] = "Degrees\tPING Distance (cm)\r\n";
@@ -107,7 +107,7 @@ int main(void) {
 
             //create objects based on sensor data
             for (i = 0; i <= 180; i++) {
-                if (scan_vals[i] < average * distance_tolerance) {
+                if (scan_vals[i] < average * distance_tolerance || scan_vals[i] < 100) {
                     consecutive++;
                 } else {
                     if (consecutive >= object_tolerance) {
