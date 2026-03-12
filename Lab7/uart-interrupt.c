@@ -8,15 +8,11 @@
 *   @date
 */
 
-// The "???" placeholders should be the same as in your uart.c file.
-// The "?????" placeholders are new in this file and must be replaced.
-
 #include <inc/tm4c123gh6pm.h>
 #include <stdint.h>
 #include "uart-interrupt.h"
 
-// These variables are declared as examples for your use in the interrupt handler.
-volatile char command_byte = -1; // byte value for special character used as a command
+volatile char received_char = '\0'; // byte value for special character used as a command
 volatile int command_flag = 0; // flag to tell the main program a special command was received
 
 void uart_interrupt_init(void){
@@ -93,16 +89,15 @@ void uart_interrupt_init(void){
 }
 
 void uart_sendChar(char data){
+    while(UART1_FR_R & 0x20);
     UART1_DR_R = data;
 }
 
-char uart_receive(void){
-    //DO NOT USE this busy-wait function if using RX interrupt
-    return '0'; //placeholder
-}
-
 void uart_sendStr(const char *data){
-    //TODO for reference see lcd_puts from lcd.c file
+    while (*data != '\0') {
+        uart_sendChar(*data);
+        data++;
+    }
 }
 
 // Interrupt handler for receive interrupts
@@ -119,25 +114,7 @@ void UART1_Handler(void)
         //read the byte received from UART1_DR_R and echo it back to PuTTY
         //ignore the error bits in UART1_DR_R
         byte_received = UART1_DR_R & 0xFF;
-        uart_sendChar(byte_received);
 
-        //if byte received is a carriage return
-        if (byte_received == '\r')
-        {
-            //send a newline character back to PuTTY
-            uart_sendChar('\n');
-        }
-        else
-        {
-            //AS NEEDED
-            //code to handle any other special characters
-            //code to update global shared variables
-            //DO NOT PUT TIME-CONSUMING CODE IN AN ISR
-
-            if (byte_received == command_byte)
-            {
-              command_flag = 1;
-            }
-        }
+        received_char = byte_received;
     }
 }
