@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #define NUM_OBJECTS 10
+#define MAX_SCAN_RANGE 181
 
 typedef struct {
     int id;
@@ -17,6 +18,25 @@ typedef struct {
     double linear_width;
 } field_object;
 
+typedef struct {
+    uint8_t range;
+    uint8_t start;
+    uint8_t end;
+    uint8_t increment;
+    uint8_t num_measures;
+} scan_config;
+
+typedef struct {
+    uint16_t ir_average;
+    uint16_t ping_average;
+    uint16_t ir_scan_vals[MAX_SCAN_RANGE]; //holds the averaged ir scan values
+    uint16_t ping_scan_vals[MAX_SCAN_RANGE]; //holds the averaged ping scan values
+} scan_result;
+
+static cyBOT_Scan_t scan;
+static char message[64];
+static scan_result result;
+
 void calibrate(void) {
     timer_init();
     lcd_init();
@@ -24,9 +44,44 @@ void calibrate(void) {
     cyBOT_SERVO_cal();
 }
 
-int main(void) {
-    cyBOT_Scan_t scan;
+void scan_field(scan_config *config, scan_result *result) {
+    uart_sendStr("\r\nDegrees\tIR Value (raw)\r\n");
 
+    uint16_t i, j;
+
+    int ir_scan_sum = 0; //sum of all ir scan values
+    int ping_scan_sum = 0; //sum of all ping scan values
+
+    for (i = config->start; i <= config->end; i += config->increment) {
+        if (received_char == 'q') break; //stop the scan if q is pressed
+
+        //sum of multiple measurements for the same angle
+        int ir_sum = 0;
+        int ping_sum = 0;
+        for (j = 0; j < config->num_measures; j++) {
+            cyBOT_Scan(i, &scan);
+
+            ir_sum += scan.IR_raw_val;
+            ping_sum += scan.sound_dist;
+        }
+        uint16_t ir_average = ir_sum / config->num_measures; //average per angle
+        uint16_t ping_average = ping_sum / config->num_measures; //average per angle
+
+        ir_scan_sum += ir_average;
+        ping_scan_sum += ping_average;
+
+        result->ir_scan_vals[i - config->start] = ir_average;
+        result->ping_scan_vals[i - config->start] = ping_average;
+
+        sprintf(message, "%d\t%d\r\n", i, ir_average);
+        uart_sendStr(message);
+    }
+    //calculate average of all scan values and assign to scan_result struct
+    result->ir_average = ir_scan_sum / config->range;
+    result->ping_average = ping_scan_sum / config->range;
+}
+
+int main(void) {
     oi_t *sensor_data = oi_alloc();
     oi_init(sensor_data);
 
@@ -38,57 +93,15 @@ int main(void) {
     right_calibration_value = 253750;
     left_calibration_value = 1235500;
 
-    char message[64];
-
     while (1) {
         if (received_char == 's') {
-            uart_sendStr("\r\nDegrees\tIR Value (raw)\r\n");
-            //might want to change to uintsomething at some point for memory
-            uint16_t i, j;
-            uint16_t scan_range = 181; //total amount of angles scanned
-            uint16_t scan_start = 0; //starting angle for scan
-            uint16_t scan_end = 180; //ending angle for scan
-            uint8_t scan_increment = 1; //angle increment of the scan
+            uint16_t i;
+            scan_config config = {181, 0, 180, 1, 3}; //range, start, end, increment, number of measures per angle
 
-            uint16_t ir_scan_vals[scan_range]; //holds the averaged ir scan values
-            uint16_t ping_scan_vals[scan_range]; //holds the averaged ping scan values
-
-            int num_measurements = 3; //amount of times the sensor value is taken per angle increment
-
-            int ir_scan_sum = 0; //sum of all ir scan values
-            int ping_scan_sum = 0; //sum of all ping scan values
-            uint16_t ir_distance_average; //average distance of entire scan ir values
-            uint16_t ping_distance_average; //average distance of entire scan ping values
-
-            double tolerance = 0.9; //how sensitive to objects
-
-            for (i = scan_start; i <= scan_end; i += scan_increment) {
-                if (received_char == 'q') break; //stop the scan if q is pressed
-
-                int ir_sum = 0;
-                int ping_sum = 0;
-                for (j = 0; j < num_measurements; j++) {
-                    cyBOT_Scan(i, &scan);
-
-                    ir_sum += scan.IR_raw_val;
-                    ping_sum += scan.sound_dist;
-                }
-                int ir_average = ir_sum / num_measurements; //average per angle
-                int ping_average = ping_sum / num_measurements; //average per angle
-
-                ir_scan_sum += ir_average;
-                ping_scan_sum += ping_average;
-
-                ir_scan_vals[i - scan_start] = ir_average;
-                ping_scan_vals[i - scan_start] = ping_average;
-
-                sprintf(message, "%d\t%d\r\n", i, ir_average);
-                uart_sendStr(message);
-            }
+            scan_field(&config, &result);
             if (received_char == 'q') continue; //don't do calculations if scan is quit
 
-            ir_distance_average = ir_scan_sum / scan_range;
-            ping_distance_average = ping_scan_sum / scan_range;
+            double tolerance = 0.9; //how sensitive to objects
 
             int object_tolerance = 3; //number of consecutive values for something to be an object
             int consecutive = 0; //number of consecutive values above threshold
@@ -98,16 +111,16 @@ int main(void) {
             field_object field_objects[NUM_OBJECTS] = {0};
 
             //maybe add edge detection based on spikes
-            for (i = 0; i < scan_range / scan_increment; i++) {
-                if (ir_scan_vals[i] > (tolerance * ir_distance_average) && ping_scan_vals[i] < 100) {
+            for (i = 0; i < config.range / config.increment; i++) {
+                if (result.ir_scan_vals[i] > (tolerance * result.ir_average) && result.ping_scan_vals[i] < 100) {
                     consecutive++;
                 } else {
                     if (consecutive >= object_tolerance) {
                         field_object temp;
                         temp.id = object_id++;
                         temp.angle = i - (consecutive / 2);
-                        temp.distance = ping_scan_vals[temp.angle];
-                        temp.rad_width = consecutive * scan_increment;
+                        temp.distance = result.ping_scan_vals[temp.angle];
+                        temp.rad_width = consecutive * config.increment;
                         temp.linear_width = M_PI * temp.distance * ((double)temp.rad_width / 180.0);
                         field_objects[temp.id - 1] = temp;
                     }
@@ -125,9 +138,6 @@ int main(void) {
                     timer_waitMillis(5000);
                 }
             }
-
-
-
             received_char = '\0';
         }
     }
