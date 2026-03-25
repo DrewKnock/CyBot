@@ -29,8 +29,6 @@ typedef struct {
 typedef struct {
     uint16_t ir_average;
     uint16_t ping_average;
-    uint16_t ir_scan_vals[MAX_SCAN_RANGE]; //holds the averaged ir scan values
-    uint16_t ping_scan_vals[MAX_SCAN_RANGE]; //holds the averaged ping scan values
 } scan_result;
 
 static cyBOT_Scan_t scan;
@@ -73,12 +71,62 @@ void scan_field(scan_config *config, scan_result *result) {
         result->ir_scan_vals[i - config->start] = ir_average;
         result->ping_scan_vals[i - config->start] = ping_average;
 
-        sprintf(message, "%d\t%d\r\n", i, ir_average);
+        sprintf(message, "%d\t%d\t%d\tscan\r\n", i, ir_average, ping_average);
         uart_sendStr(message);
     }
     //calculate average of all scan values and assign to scan_result struct
     result->ir_average = ir_scan_sum / config->range;
     result->ping_average = ping_scan_sum / config->range;
+}
+
+void scan_field2(scan_config *config, scan_result *result) {
+    cyBOT_init_Scan(0b0101);
+    uart_sendStr("\r\nDegrees\tIR Value (raw)\r\n");
+
+    uint16_t i, j;
+
+    int16_t tolerance = 100;
+    uint8_t object_tolerance = 6;
+    uint8_t consecutive = 0;
+
+    uint16_t ir_average;
+    uint16_t prev_ir_average;
+    int total_ir = 0;
+
+    for (i = config->start; i <= config->end; i += config->increment) {
+        if (received_char == 'q') break; //stop the scan if q is pressed
+
+        //sum of multiple measurements for the same angle
+        uint16_t ir_sum = 0;
+        for (j = 0; j < config->num_measures; j++) {
+            cyBOT_Scan(i, &scan);
+
+            ir_sum += scan.IR_raw_val;
+        }
+        ir_average = ir_sum / config->num_measures; //average per angle
+
+        total_ir += ir_average;
+
+        if (i == config->start) {
+            prev_ir_average = ir_average;
+        }
+
+        if (ir_average - prev_ir_average > -tolerance && ir_average - prev_ir_average < tolerance) {
+            consecutive++;
+        } else {
+            if (consecutive >= object_tolerance) {
+                sprintf(message, "Object is %d wide\r\n", consecutive);
+                uart_sendStr(message);
+            }
+            consecutive = 0;
+        }
+
+        prev_ir_average = ir_average;
+
+        sprintf(message, "%d\t%d\tscan\r\n", i, ir_average);
+        uart_sendStr(message);
+    }
+    result->ir_average = total_ir / config->range;
 }
 
 int main(void) {
@@ -96,12 +144,12 @@ int main(void) {
     while (1) {
         if (received_char == 's') {
             uint16_t i;
-            scan_config config = {181, 0, 180, 1, 3}; //range, start, end, increment, number of measures per angle
+            scan_config config = {181, 0, 180, 1, 1}; //range, start, end, increment, number of measures per angle
 
-            scan_field(&config, &result);
+            scan_field2(&config, &result);
             if (received_char == 'q') continue; //don't do calculations if scan is quit
 
-            double tolerance = 0.9; //how sensitive to objects
+            double tolerance = 0.9; //how sensitive to objects, lower is more sensitive
 
             int object_tolerance = 3; //number of consecutive values for something to be an object
             int consecutive = 0; //number of consecutive values above threshold
@@ -133,11 +181,15 @@ int main(void) {
                     field_object o = field_objects[i];
                     uart_sendStr("Object Id\tAngle\tDistance\tRadial Width\tLinear Width\r\n");
                     sprintf(message, "%d       \t%d   \t%d      \t%d          \t%.3lf        \r\n", o.id, o.angle, o.distance, o.rad_width, o.linear_width);
+                    uart_sendStr("OBJECT\n");
                     uart_sendStr(message);
                     cyBOT_Scan(o.angle, &scan);
-                    timer_waitMillis(5000);
+                    timer_waitMillis(2000);
                 }
             }
+
+            uart_sendStr("END\n");
+
             received_char = '\0';
         }
     }
