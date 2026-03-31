@@ -45,6 +45,30 @@ double move_forward(oi_t *sensor_data, double distance_mm) {
     return sum;
 }
 
+//returns distance left to travel, if not zero, then a bump is assumed
+double move_forward_bump(oi_t *sensor_data, double distance_mm) {
+    int i;
+    int increment = 15;
+    int sum = 0;
+
+    //Start building up speed slowly
+    for (i = 1; i <= 10; i++) {
+        oi_setWheels(i * increment, i * increment);
+        sum += get_distance(sensor_data);
+    }
+
+    while (sum < distance_mm) {
+        sum += get_distance(sensor_data);
+        if (sensor_data->bumpLeft || sensor_data->bumpRight) {
+            oi_setWheels(0, 0);
+            return (distance_mm - sum) / 10;
+        }
+    }
+
+    oi_setWheels(0,0);
+    return 0.0;
+}
+
 double move_forward_collision(oi_t *sensor_data, double distance_mm) {
     int i = 0;
     int increment = 25;
@@ -143,8 +167,9 @@ static double collision_helper(oi_t *sensor_data) {
 
 double turn_left(oi_t *sensor, double degrees) {
     double sum = 0;
-    //0.97
-    double rotation_corrected = degrees * 0.90;
+
+    double calibration = 0.94;
+    double rotation_corrected = degrees * calibration;
 
     oi_setWheels(50, -50);
 
@@ -162,8 +187,9 @@ double turn_left(oi_t *sensor, double degrees) {
 
 double turn_right(oi_t *sensor, double degrees) {
     double sum = 0;
-    //0.97
-    double rotation_corrected = degrees * 0.90;
+
+    double calibration = 0.97;
+    double rotation_corrected = degrees * calibration;
 
     oi_setWheels(-50, 50);
 

@@ -56,18 +56,37 @@ int main(void) {
     cyBot_uart_init();
     lcd_init();
     timer_init();
-    cyBOT_init_Scan(0b0111);
+    cyBOT_init_Scan(0b011);
 
-    right_calibration_value = 337750;
-    left_calibration_value = 1377250;
+    right_calibration_value = 316750;
+    left_calibration_value = 1303750;
 
     char receive_char;
-    char message[50] = "Degrees\tPING Distance (cm)\r\n";
+    char message[50] = "";
 
     while (1) {
         //wait for character
         receive_char = cyBot_getByte();
 
+        send_string("Angle (degrees\tDistance (cm)\r\n");
+
+        if (receive_char == 'm') {
+            //perform scan and send values to putty
+            int i;
+            for (i = 0; i <= 180; i += 2) {
+                cyBOT_Scan(i, &scan);
+
+                //send distance value of each angle to putty
+                uint16_t dist = scan.sound_dist;
+                sprintf(message, "%d\t%d\r\n", i, dist);
+                send_string(message);
+            }
+            //move scanner back to 90
+            cyBOT_Scan(90, &scan);
+        }
+    }
+
+        /*
         if (receive_char == 'm') {
             double scan_vals[181];
             double distance_tolerance = 0.5;
@@ -161,7 +180,7 @@ int main(void) {
             move_forward(sensor_data, (min_width_object.distance * 10) - 160);
 
         } else if (receive_char == 'q') break;
-    }
+    } */
 
     oi_free(sensor_data);
 

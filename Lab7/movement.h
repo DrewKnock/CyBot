@@ -4,6 +4,7 @@
 #include "open_interface.h"
 
 double move_forward(oi_t *sensor_data, double distance_mm);
+double move_forward_bump(oi_t *sensor_data, double distance_mm);
 double move_forward_collision(oi_t *sensor_data, double distance_mm);
 double move_backward(oi_t *sensor_data, double distance_mm);
 double turn_right(oi_t *sensor, double degrees);
