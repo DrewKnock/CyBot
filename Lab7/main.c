@@ -335,8 +335,8 @@ int main(void) {
     timer_init();
     cyBOT_init_Scan(0b0111);
 
-    right_calibration_value = 269500;
-    left_calibration_value = 1183000;
+    right_calibration_value = 337750;
+    left_calibration_value = 1382500;
 
     while (1) {
         if (received_char == 's') {

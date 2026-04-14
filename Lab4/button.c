@@ -55,8 +55,6 @@ void button_init() {
 	initialized = 1;
 }
 
-
-
 /**
  * Returns the position of the rightmost button being pushed.
  * @return the position of the rightmost button being pushed. 1 is the leftmost button, 4 is the rightmost button.  0 indicates no button being pressed
@@ -64,36 +62,6 @@ void button_init() {
 uint8_t button_getButton() {
 
 	#warning "Unimplemented function: uint8_t button_getButton(void)"	// delete warning after implementing
-
-	//
-	// DELETE ME - How bitmasking works
-	// ----------------------------------------
-	// In embedded programming, often we only care about one or a few bits in a piece of
-	// data.  There are several bitwise operators that we can apply to data in order
-	// to "mask" the bits that we don't care about.
-	//
-	//	| = bitwise OR		& = bitwise AND		^ = bitwise XOR		~ = bitwise NOT
-	//		  << x = shift left by x bits		 >> x = shift right by x bits
-	//
-	// Let's say we want to know if push button 3 (Sw3) is pushed.  Sw3 is bit 2 of GPIO_PORTE_DATA_R.
-	// Since push buttons are high (1) initially, and low (0) if pushed, PORTE should
-	// look like:
-	// GPIO_PORTE_DATA_R => 0b???? ?0?? if Sw3 is pushed
-	// GPIO_PORTE_DATA_R => 0b???? ?1?? if Sw3 is not pushed
-	//
-	// We want to only look at bit 2 and mask the other 7 bits:
-	//
-	// Bitwise AND:
-	// (GPIO_PORTE_DATA_R & 0b0000 0100) => 0b0000 0000 if Sw3 is pushed
-	// (GPIO_PORTE_DATA_R & 0b0000 0100) => 0b0000 0100 if Sw3 is not pushed
-	//
-	// Bitwise OR:
-	// (GPIO_PORTE_DATA_R | 0b1111 1011) => 0b1111 1011 if Sw3 is pushed
-	// (GPIO_PORTE_DATA_R | 0b1111 1011) => 0b1111 1111 if Sw3 is not pushed
-	//
-	// Other techniques (Shifting and bitwise AND)
-	// ((GPIO_PORTE_DATA_R >> 2) & 1) => 0 if Sw3 is pushed
-	// ((GPIO_PORTE_DATA_R >> 2) & 1) => 1 if Sw3 is not pushed
 
 	// TODO: Write code below -- Return the rightmost button position pressed
 
